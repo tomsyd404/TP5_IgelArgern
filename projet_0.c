@@ -5,11 +5,11 @@
 #include <stdbool.h>
 #include <time.h>
 
-const int MAX_HEDGEHOG = 302;
-const int MAX_LINE = 6;
-const int MAX_ROW = 9;
-const int MAX_SLICE = 4;
-const int MAX_PLAYERS = 4;
+#define MAX_HEDGEHOG 302
+#define MAX_LINE 6
+#define MAX_ROW 9
+#define MAX_SLICE 4
+#define MAX_PLAYERS 4
 
 const int INVALID_X[6] = {0,1,2,3,4,5};
 const int INVALID_Y[6] = {2,6,4,5,3,7};
@@ -263,8 +263,3 @@ int main(int argc,char **argv){
     board_print(&b, 1);
     return 0;
 }
-
-
-
-
-

@@ -9,8 +9,8 @@
 // TODO : prevent buffer overflow
 
 #define MAX_HEDGEHOGS 302
-#define MAX_LINE 6
-#define MAX_ROW 9
+#define MAX_LINE 6 // MAX_LINE > 1
+#define MAX_ROW 9 // MAX_ROW > 1
 #define MAX_SLICE 4
 #define MAX_PLAYERS 4
 #define NB_HEDGEHOGS 4 // nb of hedgehogs per player
@@ -289,6 +289,7 @@ void playerTurn(board_t* b, char player){
             if (board_height(b,iLig,iRow) <= 0)
                 continue;
             char top = board_top(b,iLig,iRow);
+            // Verify trapped
             if (top == player){
                 possibleCells[nextCell] = (coord_t){iLig,iRow};
                 ++nextCell;
@@ -324,7 +325,48 @@ void playerTurn(board_t* b, char player){
             else
                 printf(".\n\n");
         }
+        bool coherent = false;
+        char chosenRow;
+        int chosenLine;
+        while (!coherent){
+            // TODO : problem de lecture
+            chosenRow = getchar();
+            scanf("%d",&chosenLine);
+            bool coherent = false;
+            for (int iCell=0; iCell<nextCell; ++iCell){
+                coord_t cell = possibleCells[iCell];
+                if (cell.x == chosenLine-1 && cell.y == chosenRow-'a'){
+                    coherent = true;
+                    break;
+                }
+            }
+            printf("Saisie invalide : Veuillez rentrer une case valide \n\n");
+        }
+        char team = board_pop(b,chosenLine-1,chosenRow-'a');
+        // Testing edge cases : if on border then automatically move
+        if (chosenLine == 1){
+            board_push(b,1,chosenRow-'a',team);
+        }
+        else if (chosenLine == MAX_LINE-1){
+            board_push(b,MAX_LINE-2,chosenRow-'a',team);
+        }
+        else{
+            printf("Voulez-vous deplacer vers le haut ou vers le bas : [Haut/Bas]\n\n");
+            char buffer[MAX_ANSWER_LEN];
+            while (scanf("%s",buffer)){
+                if (strcmp(buffer,"Haut") == 0){
+                    board_push(b,chosenLine-2,chosenRow-'a',team);
+                    break;
+                }
+                if (strcmp(buffer,"Base") == 0){
+                    board_push(b,chosenLine,chosenRow-'a',team);
+                    break;
+                }
+                printf("Saisie invalide : Veuillez rentrer Haut ou Bas \n\n");
+            }
+        }
     }
+    
 }
 
 board_t create_board(){

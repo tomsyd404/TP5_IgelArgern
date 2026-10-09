@@ -14,6 +14,7 @@
 #define MAX_SLICE 4
 #define MAX_PLAYERS 4
 #define NB_HEDGEHOGS 4 // nb of hedgehogs per player >= 3
+#define COND_VICTOIRE (NB_HEDGEHOGS-1)
 
 const int INVALID_X[6] = {0,1,2,3,4,5};
 const int INVALID_Y[6] = {2,6,4,5,3,7};
@@ -24,6 +25,10 @@ const char IMPOSSIBLE = '!';
 typedef struct{
     int x,y;
 } coord_t;
+
+typedef struct{
+    int playerID,score;
+} playerScore_t;
 
 typedef struct{
     int size;
@@ -62,7 +67,7 @@ char board_pop(board_t* b, int line, int row){
         return IMPOSSIBLE;
     }
     int crt_siz = b->board[line][row].size;
-    if (crt_siz <= 0 || b->board[line][row].stackHedgehog[crt_siz]){
+    if (crt_siz <= 0 || b->board[line][row].stackHedgehog[crt_siz-1] == CASE_VIDE){
         // TO VERIFY -> check if character is empty
         display_message_error();
         return IMPOSSIBLE;
@@ -88,7 +93,7 @@ char board_top(board_t* b, int line, int row){
         return IMPOSSIBLE;
     }
     int crt_siz = b->board[line][row].size;
-    if (crt_siz <= 0 || !b->board[line][row].stackHedgehog[crt_siz-1]){
+    if (crt_siz <= 0 || b->board[line][row].stackHedgehog[crt_siz-1] == CASE_VIDE){
         // TO VERIFY -> check if character is empty
         display_message_error();
         return IMPOSSIBLE;
@@ -103,7 +108,7 @@ char board_peek(board_t* b, int line, int row, int pos){
         return IMPOSSIBLE;
     }
     int crt_siz = b->board[line][row].size;
-    if (crt_siz <= 0 || crt_siz < pos+1 || !b->board[line][row].stackHedgehog[crt_siz-1-pos]){
+    if (crt_siz <= 0 || crt_siz < pos+1 || b->board[line][row].stackHedgehog[crt_siz-1-pos] == CASE_VIDE){
         // TO VERIFY -> check if character is empty
         display_message_error();
         return IMPOSSIBLE;
@@ -288,8 +293,9 @@ bool can_move(board_t* b, int line, int row){
 }
 
 int verticalMove(board_t* b, char player){
-    printf("C'est au joueur %c de jouer.\n", toupper(player));
     int diceResult = dice();
+    board_print(b,diceResult-1);
+    printf("C'est au joueur %c de jouer.\n", toupper(player));
     if (diceResult == 1){
         printf("Tu dois jouer sur la 1ere ligne\n");
     }
@@ -389,22 +395,23 @@ int verticalMove(board_t* b, char player){
             getchar(); // <- just to ignore the \n
         }
     }
-    board_print(b, diceResult);
+    else getchar(); // <- just to ignore an extra \n
+    board_print(b, diceResult-1);
     return diceResult;
 }
 
 void playerTurn(board_t* b, char player){
-    int tarLine = verticalMove(b,player);
+    int tarLine = verticalMove(b,player); // dice result is 1-indexing
     int possibleRows[MAX_LINE];
     int nextCell = 0;
     for (int iRow=0; iRow<MAX_ROW-1; ++iRow){
-        if (board_height(b,tarLine,iRow) <= 0)
+        if (board_height(b,tarLine-1,iRow) <= 0)
             continue;
-		if (!is_trapped(tarLine,iRow)){
+		if (!is_trapped(tarLine-1,iRow)){
 			possibleRows[nextCell] = iRow;
 			++nextCell;
 		}
-		else if (can_move(b, tarLine, iRow)){
+		else if (can_move(b, tarLine-1, iRow)){
 			possibleRows[nextCell] = iRow;
 			++nextCell;
         }
@@ -438,9 +445,9 @@ void playerTurn(board_t* b, char player){
             break;
         printf("Saisie invalide : Veuillez rentrer une case valide \n\n");
     }
-    char team = board_pop(b,tarLine,chosenRow-'a');
-    board_push(b,tarLine,chosenRow-'a'+1,team);
-    board_print(b,tarLine);
+    char team = board_pop(b,tarLine-1,chosenRow-'a');
+    board_push(b,tarLine-1,chosenRow-'a'+1,team);
+    //board_print(b,tarLine-1);
 }
 
 board_t create_board(){
@@ -461,19 +468,57 @@ board_t create_board(){
 	return b;
 }
 
+int compTriage(const void* player1, const void* player2){
+    playerScore_t* p1 = (playerScore_t*) player1;
+    playerScore_t* p2 = (playerScore_t*) player2;
+    return p2->score - p1->score;
+}
+
 bool victoire(board_t* b){
-    return false;
+    bool is_finished = false;
+    for (int iPlayer=0; iPlayer<MAX_PLAYERS; ++iPlayer){
+        if (b->scorePlayers[iPlayer] >= COND_VICTOIRE){
+            is_finished = true;
+            break;
+        }
+    }
+    if (!is_finished)
+        return false;
+    // ranking
+    playerScore_t classement[MAX_PLAYERS];
+    for (int iPlayer=0; iPlayer<MAX_PLAYERS; ++iPlayer){
+        classement[iPlayer] = (playerScore_t){iPlayer,b->scorePlayers[iPlayer]};
+    }
+    qsort(classement,MAX_PLAYERS,sizeof(playerScore_t),compTriage);
+    int rank = 1;
+    bool printing = true;
+    for (int iPlayer=0; iPlayer<MAX_PLAYERS; ++iPlayer){
+        if (iPlayer != 0 && classement[iPlayer].score < classement[iPlayer-1].score){
+            ++rank;
+            printing = true;
+        }
+        if (printing){
+            printf("\n- Place #%d : équipe %c",rank,'A'+classement[iPlayer].playerID);
+        }
+        else{
+            printf(", équipe %c",'A'+classement[iPlayer].playerID);
+        }
+        printing = false;
+    }
+    printf("\n\n");
+    return true;
 }
 
 int main(){
 	srand(time(NULL));
     board_t b = create_board();
-    board_print(&b, 1);
+    //board_print(&b, 0);
     while (1){
         for (int iPlayer=0; iPlayer<MAX_PLAYERS; ++iPlayer){
             playerTurn(&b, 'a'+iPlayer);
         }
         if (victoire(&b)){
+            board_print(&b,-1);
             printf("THE END\n\n");
             break;
         }

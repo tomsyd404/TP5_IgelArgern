@@ -1,2 +1,6 @@
-- buffer overflow
+- buffer overflow (scanf_s)
 - refactoriser le code
+- ajout ligne/colonne
+- rapport
+- extension du jeu
+- IA
